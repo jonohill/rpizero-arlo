@@ -1,0 +1,84 @@
+from aiohttp import web
+from uuid import uuid4 as uuid
+import aiohttp
+import logging
+import os
+from time import time
+from video_recogniser import VideoRecogniser
+from pprint import pformat
+
+log = logging.getLogger(__name__)
+logging.basicConfig(level=os.environ.get('LOGLEVEL', 'WARNING').upper())
+
+# TODO what do we call this thing
+try:
+    POST_KEY = os.environ['ARLO_HTTP_KEY']
+except:
+    POST_KEY = str(uuid())
+    print(f'The POST key is {POST_KEY}')
+AZURE_ENDPOINT = os.environ['AZURE_ENDPOINT']
+AZURE_KEY = os.environ['AZURE_KEY']
+
+routes = web.RouteTableDef()
+
+NUM_FRAMES = 3
+FRAMES_DIR = '/tmp/frames'
+
+@routes.post('/video')
+async def post_video(request: web.Request):
+    # Validate key
+    if request.headers.get('x-key', None) != POST_KEY:
+        return web.Response(status=403)
+    
+    # Validate duration param
+    try:
+        duration = int(request.query['duration'])
+        if duration <= 0:
+            raise ValueError()
+    except:
+        return web.json_response({'error': 'positive_duration_required'}, status=400)
+        
+    try: # TODO frame rate
+        async with VideoRecogniser(azure_endpoint=AZURE_ENDPOINT, azure_api_key=AZURE_KEY) as recogniser:
+            async for result in recogniser.check_video(request.content, duration):
+                log_result = result.copy()
+                frame = log_result.get('frame', None)
+                if frame:
+                    log_result['frame'] = f'{frame[:4]}...'
+                log.debug(pformat(log_result))
+    except Exception as err:
+        # TODO more specific failure
+        log.debug(err)
+        return web.json_response({'error': 'not_a_supported_video'}, status=400)
+
+    # with open('/tmp/data', 'wb') as f:
+    #     f.write(await request.content.read())
+
+    return web.Response(status=204)
+
+@routes.post('/vision/v2.1/analyze')
+async def post_mock_azure(request: web.Request):
+    try:
+        log.debug('Mock request start')
+        content = await request.read()
+        log.debug(f'Mock - received content length {len(content)}, starts with {content[:4]}')
+        return web.json_response({
+            'objects': [{
+                'object': 'thing',
+                'rectangle': {
+                    'x': 100,
+                    'y': 100,
+                    'w': 100,
+                    'h': 100
+                }
+            }]
+        })
+    except Exception as err:
+        log.debug(f'Mock - exception {err}')
+        raise err
+
+routes.static('/frames', FRAMES_DIR)
+
+app = web.Application()
+app.add_routes(routes)
+web.run_app(app)

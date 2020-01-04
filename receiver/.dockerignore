@@ -1,0 +1,7 @@
+__pycache__
+.venv
+.vscode
+flash
+videos
+*.mp4
+.python-version

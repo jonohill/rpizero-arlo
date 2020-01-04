@@ -1,0 +1,9 @@
+# various test input/output files
+*.jpg
+*.ts
+*.mp4
+*.hexdump
+*.mjpg
+*.png
+
+.vscode

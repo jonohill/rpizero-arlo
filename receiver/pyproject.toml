@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "rpizero-arlo"
+version = "0.1.2"
+description = ""
+authors = ["Jono Hill <jonathan@hillnz.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+aiohttp = "^3.6"
+aiodns = "^2.0"
+python-ffmpeg = "^1.0.8"
+
+[tool.poetry.dev-dependencies]
+pylint = "^2.4"
+rope = "^0.14.0"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
