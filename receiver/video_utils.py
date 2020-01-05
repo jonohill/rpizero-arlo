@@ -34,11 +34,15 @@ async def extract_frame(input, frame_num, extra_filters=[]):
     log.debug(f'ffmpeg args: {" ".join(ff_cmd)}')
     return await _exec('ffmpeg', ff_cmd)
 
-async def extract_frames(input_stream: StreamReader, frame_rate) -> AsyncGenerator[AsyncGenerator[bytearray, None], None]:
+async def extract_frames(input_stream: StreamReader, frame_times: array[int]) -> AsyncGenerator[AsyncGenerator[bytearray, None], None]:
+    
+    
+    
     args = [
         'ffmpeg', 
         '-i', '-',
-        '-vf', f'fps=fps={frame_rate:.4f}',
+        '-vsync', 'vfr', # else duplicate frames are produced to fill in the 'gaps'
+        '-vf', f"select={'+'.join()
         '-f', 'mjpeg',
         '-'
     ]
