@@ -28,17 +28,23 @@ FRAME_COUNT = 3
 
 class VideoRecogniser:
 
-    def __init__(self, azure_endpoint, azure_api_key):
+    def __init__(self, azure_endpoint, azure_api_key, http_session=None):
         self._session = None
         self._endpoint = azure_endpoint
         self._api_key = azure_api_key
+        self._created_session = False
+        if http_session:
+            self._session = http_session
 
     async def __aenter__(self):
-        self._session = aiohttp.ClientSession(raise_for_status=True)
+        if not self._session:
+            self._created_session = True
+            self._session = aiohttp.ClientSession(raise_for_status=True)
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        await self._session.close()
+        if self._created_session:
+            await self._session.close()
 
     async def recognise_image(self, image_data):
         '''image_data can be anything supported by aiohttp, e.g. bytes, generator'''
@@ -65,8 +71,6 @@ class VideoRecogniser:
     async def check_video(self, vid_stream, duration_ms: int):
         '''Generator. Given a video stream, generate recognition results.'''
 
-        frame_rate = FRAME_COUNT / (duration_ms / 1000)
-
         async def recognise(jpeg):
             jpeg_data = b''
             async def yield_jpeg():
@@ -79,7 +83,16 @@ class VideoRecogniser:
                 results['frame'] = jpeg_data
                 return results
 
-        jpeg_generator = video_utils.extract_frames(vid_stream, frame_rate)
+        frame_seconds = [0.1]
+        add_end_frame = FRAME_COUNT >= 3
+        middle_frame_count = FRAME_COUNT - (2 if add_end_frame else 1)
+        middle_frame_gap = duration_ms / (middle_frame_count + 1) / 1000
+        for n in range(1, middle_frame_count + 1):
+            frame_seconds.append(n * middle_frame_gap)
+        if add_end_frame:
+            frame_seconds.append((duration_ms / 1000) - 0.1)
+
+        jpeg_generator = video_utils.extract_frames(vid_stream, frame_seconds)
         task_completer = as_completed_and_iterated(jpeg_generator)
         async for task, result in task_completer:
             if task == jpeg_generator: # frame generator

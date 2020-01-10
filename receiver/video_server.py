@@ -4,7 +4,7 @@ import aiohttp
 import logging
 import os
 from time import time
-from video_recogniser import VideoRecogniser
+from video_notifier import VideoNotifier
 from pprint import pformat
 
 log = logging.getLogger(__name__)
@@ -18,6 +18,8 @@ except:
     print(f'The POST key is {POST_KEY}')
 AZURE_ENDPOINT = os.environ['AZURE_ENDPOINT']
 AZURE_KEY = os.environ['AZURE_KEY']
+IFTTT_KEY = os.environ['IFTTT_KEY']
+FRAME_URL_BASE = os.environ['ARLO_URL_BASE']
 
 routes = web.RouteTableDef()
 
@@ -39,13 +41,9 @@ async def post_video(request: web.Request):
         return web.json_response({'error': 'positive_duration_required'}, status=400)
         
     try: # TODO frame rate
-        async with VideoRecogniser(azure_endpoint=AZURE_ENDPOINT, azure_api_key=AZURE_KEY) as recogniser:
-            async for result in recogniser.check_video(request.content, duration):
-                log_result = result.copy()
-                frame = log_result.get('frame', None)
-                if frame:
-                    log_result['frame'] = f'{frame[:4]}...'
-                log.debug(pformat(log_result))
+        async with VideoNotifier(azure_endpoint=AZURE_ENDPOINT, azure_key=AZURE_KEY, 
+            ifttt_key=IFTTT_KEY, frame_dir=FRAMES_DIR, frame_url_base=FRAME_URL_BASE) as notifier:
+            await notifier.check_video(request.content, duration)
     except Exception as err:
         # TODO more specific failure
         log.debug(err)
@@ -62,6 +60,8 @@ async def post_mock_azure(request: web.Request):
         log.debug('Mock request start')
         content = await request.read()
         log.debug(f'Mock - received content length {len(content)}, starts with {content[:4]}')
+        with open(f'/tmp/{uuid()}.jpg', 'wb') as f:
+            f.write(content)
         return web.json_response({
             'objects': [{
                 'object': 'thing',
@@ -77,6 +77,7 @@ async def post_mock_azure(request: web.Request):
         log.debug(f'Mock - exception {err}')
         raise err
 
+os.makedirs(FRAMES_DIR, exist_ok=True)
 routes.static('/frames', FRAMES_DIR)
 
 app = web.Application()

@@ -34,15 +34,14 @@ async def extract_frame(input, frame_num, extra_filters=[]):
     log.debug(f'ffmpeg args: {" ".join(ff_cmd)}')
     return await _exec('ffmpeg', ff_cmd)
 
-async def extract_frames(input_stream: StreamReader, frame_times: array[int]) -> AsyncGenerator[AsyncGenerator[bytearray, None], None]:
+async def extract_frames(input_stream: StreamReader, frame_seconds: list) -> AsyncGenerator[AsyncGenerator[bytearray, None], None]:
     
-    
-    
+    c = '\\,'
     args = [
         'ffmpeg', 
         '-i', '-',
         '-vsync', 'vfr', # else duplicate frames are produced to fill in the 'gaps'
-        '-vf', f"select={'+'.join()
+        '-vf', f"select='{'+'.join(( f'(gt({s:.4f}{c}prev_t)*lte({s:.4f}{c}t))' for s in frame_seconds ))}'", 
         '-f', 'mjpeg',
         '-'
     ]
@@ -73,12 +72,14 @@ async def extract_frames(input_stream: StreamReader, frame_times: array[int]) ->
             if task == frame_generator:
                 yield result
     finally:
+        # log.debug(stderr.decode())
         _check_result(proc.returncode, stderr)
 
-async def draw_boxes_on_image(input: bytearray, output_file: str, colour, *boxes, thickness=3):
+async def draw_boxes_on_image(input: bytearray, output_file: str, colour, boxes, thickness=3):
     if not boxes:
         with open(output_file, 'wb') as f:
             f.write(input)
+        return
 
     proc = await asyncio.create_subprocess_exec('ffmpeg', 
         '-i', '-',

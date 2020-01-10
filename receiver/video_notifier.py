@@ -6,21 +6,22 @@ import os
 import logging
 import aiohttp
 from time import time
+from uuid import uuid4 as uuid
 
 log = logging.getLogger(__name__)
 
-INTERESTING_OBJECTS = {
-    'person',
-    'man',
-    'woman',
-    'animal',
-    'cat',
-    'dog',
-    'bird',
-    'vehicle',
-    'car',
-    'truck'
-}
+INTERESTING_OBJECTS = { 'any' }
+#     'person',
+#     'man',
+#     'woman',
+#     'animal',
+#     'cat',
+#     'dog',
+#     'bird',
+#     'vehicle',
+#     'car',
+#     'truck'
+# }
 NOTIFICATION_TITLE = 'Camera Alert'
 NOTIFICATION_MESSAGE = '{} spotted'
 
@@ -34,40 +35,49 @@ class VideoNotifier:
         self.frame_url_base = frame_url_base
         self.ifttt_event = ifttt_event
 
-    async def notify(self, http_session: aiohttp.ClientSession, ifttt_key, title, message, image_url=''):
-        async with http_session.post(f'https://maker.ifttt.com/trigger/{self.ifttt_event}/with/key/{self.ifttt_key}',
+    async def __aenter__(self):
+        self._session = aiohttp.ClientSession(raise_for_status=True)
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self._session.close()        
+
+    async def notify(self, title, message, image_url=''):
+        async with self._session.post(f'https://maker.ifttt.com/trigger/{self.ifttt_event}/with/key/{self.ifttt_key}',
             json={'value1': title, 'value2': message, 'value3': image_url}) as resp:
             log.debug(f'ifttt response: {await resp.text()}')
 
-async def check_video(azure_endpoint, azure_key, ifttt_key, video_stream):
-    start = time()
-    notified = False
-    unnotified_objects = INTERESTING_OBJECTS.copy()
-    async with aiohttp.ClientSession() as http_session:
-        async with VideoRecogniser(azure_endpoint, azure_key) as recogniser:
-            async for vid_results in recogniser.check_video(video_stream):
+    async def check_video(self, video_stream, duration):
+        start = time()
+        notified = False
+        notified_objects = set()
+        notify_all = 'any' in INTERESTING_OBJECTS
+        async with VideoRecogniser(self.azure_endpoint, self.azure_key, self._session) as recogniser:
+            async for vid_results in recogniser.check_video(video_stream, duration):
                 objects = vid_results['objects']
                 if objects:
-                    actionable = unnotified_objects & set(( o['label'] for o in objects ))
+                    actionable = set(( o['label'] for o in objects )) - notified_objects
+                    if not notify_all:
+                        actionable &= INTERESTING_OBJECTS
                     if actionable:
-                        unnotified_objects -= actionable
+                        notified_objects |= actionable
                         object_names = ', '.join(actionable).capitalize()
                         
                         # Text only notification
-                        await notify(http_session, ifttt_key, NOTIFICATION_MESSAGE.format(object_names), 'Photo incoming...')
+                        await self.notify(NOTIFICATION_MESSAGE.format(object_names), 'Photo incoming...')
                         if not notified:
                             log.info(f'Time to first notify: {time()-start}')
                             notified = True
 
                         # Rich notification
-                        boxes = ( (p['x'], p['y'], p['w'], p['h']) for p in ( o['position'] for o in objects ) )
-                        await video_utils.draw_boxes_on_image(vid_results['frame'], 'TODO', colour='red', *boxes)
+                        boxes = ( (p['x'], p['y'], p['w'], p['h']) for p in ( o['position'] for o in objects if o['label'] in actionable ) )
+                        out_file = f'{uuid()}.jpg'
+                        await video_utils.draw_boxes_on_image(input=vid_results['frame'], output_file=os.path.join(self.frame_dir, out_file), colour='red', boxes=boxes)
                         
-                        
+                        image_url = self.frame_url_base + out_file
                         log.debug(f'Image URL is {image_url}')
-                        await notify(http_session, ifttt_key, 
-                            NOTIFICATION_MESSAGE.format(object_names), '📸', image_url)
-    log.info(f'Time to check all videos and notify: {time()-start}')
+                        await self.notify(NOTIFICATION_MESSAGE.format(object_names), '📸', image_url)
+        log.info(f'Time to check all videos and notify: {time()-start}')
                     
 if __name__ == "__main__":
 
@@ -83,4 +93,4 @@ if __name__ == "__main__":
     AZURE_API_KEY = os.environ['AZURE_API_KEY']
     IFTTT_KEY = os.environ['IFTTT_KEY']
 
-    asyncio.run(check_videos(AZURE_ENDPOINT, AZURE_API_KEY, IFTTT_KEY, args.videos_dir, args.state_file))
+    # asyncio.run(check_videos(AZURE_ENDPOINT, AZURE_API_KEY, IFTTT_KEY, args.videos_dir, args.state_file))
