@@ -12,19 +12,19 @@ logging.basicConfig(level=os.environ.get('LOGLEVEL', 'WARNING').upper())
 
 # TODO what do we call this thing
 try:
-    POST_KEY = os.environ['ARLO_HTTP_KEY']
+    POST_KEY = os.environ['ARLO_HTTP_KEY'] or str(uuid())
 except:
     POST_KEY = str(uuid())
     print(f'The POST key is {POST_KEY}')
 AZURE_ENDPOINT = os.environ['AZURE_ENDPOINT']
-AZURE_KEY = os.environ['AZURE_KEY']
+AZURE_KEY = os.environ['AZURE_API_KEY']
 IFTTT_KEY = os.environ['IFTTT_KEY']
 FRAME_URL_BASE = os.environ['ARLO_URL_BASE']
+FRAMES_DIR = os.environ.get('ARLO_FRAMES_DIR', '/tmp/frames') or '/tmp/frames'
 
 routes = web.RouteTableDef()
 
 NUM_FRAMES = 3
-FRAMES_DIR = '/tmp/frames'
 
 @routes.post('/video')
 async def post_video(request: web.Request):
@@ -40,7 +40,7 @@ async def post_video(request: web.Request):
     except:
         return web.json_response({'error': 'positive_duration_required'}, status=400)
         
-    try: # TODO frame rate
+    try:
         async with VideoNotifier(azure_endpoint=AZURE_ENDPOINT, azure_key=AZURE_KEY, 
             ifttt_key=IFTTT_KEY, frame_dir=FRAMES_DIR, frame_url_base=FRAME_URL_BASE) as notifier:
             await notifier.check_video(request.content, duration)
@@ -48,9 +48,6 @@ async def post_video(request: web.Request):
         # TODO more specific failure
         log.debug(err)
         return web.json_response({'error': 'not_a_supported_video'}, status=400)
-
-    # with open('/tmp/data', 'wb') as f:
-    #     f.write(await request.content.read())
 
     return web.Response(status=204)
 

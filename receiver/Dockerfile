@@ -1,12 +1,15 @@
-FROM python:3.7-slim
+FROM python:3.7
 
+ENV "ARLO_HTTP_KEY"=
 ENV "AZURE_ENDPOINT"=
 ENV "AZURE_API_KEY"=
 ENV "IFTTT_KEY"=
-ENV "ARLO_VIDEOS_DIR"=
-ENV "ARLO_STATE_FILE"=
-ENV "ARLO_MOUNT_DEVICE"=
-ENV "ARLO_MOUNT_OPTIONS"=
+ENV "ARLO_URL_BASE"=
+ENV "ARLO_FRAMES_DIR"=
+
+RUN apt-get update && apt-get install -y ffmpeg
+
+EXPOSE 8080
 
 WORKDIR /usr/src/app
 
@@ -14,4 +17,4 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-CMD [ "docker-entrypoint.sh" ]
+CMD [ "python", "video_server.py" ]
