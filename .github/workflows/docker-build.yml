@@ -1,0 +1,27 @@
+name: Build Docker image
+
+on:
+  - push
+  - pull_request
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Build
+      run: |
+        short_sha=$(printf {{ github.sha }} | cut -c 1-7)
+        echo $short_sha
+        docker build receiver --file receiver/Dockerfile --tag motionzero-receiver:$short_sha
+
+  # push:
+  #   - ok
+        
+  # publish:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - 
