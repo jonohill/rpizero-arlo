@@ -12,13 +12,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - id: build
+    - name: build
       env:
         GIT_SHA: ${{ github.sha }}
+        DOCKER_REPO: docker.pkg.github.com/${{ github.repository }}/motionzero-receiver
       run: |
         short_sha=$(printf $GIT_SHA | cut -c 1-7)
-        echo $short_sha
-        docker build receiver --file receiver/Dockerfile --tag motionzero-receiver:$short_sha
+        docker build receiver --file receiver/Dockerfile --tag $DOCKER_REPO:$short_sha
+        docker push $DOCKER_REPO
 
   # push:
   #   - ok
