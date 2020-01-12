@@ -22,7 +22,7 @@ jobs:
         docker tag ci $DOCKER_REPO:$short_sha
         docker push $DOCKER_REPO
     - name: release
-      if: github.ref == master
+      if: github.ref == 'master'
       run: | # TODO version tag
         docker tag ci $DOCKER_REPO:latest
         docker push
