@@ -15,7 +15,7 @@ jobs:
     - name: build
       env:
         DOCKER_REPO: docker.pkg.github.com/${{ github.repository }}/motionzero-receiver
-        run: |
+      run: |
         docker login docker.pkg.github.com --username jonohill --password ${{ secrets.GITHUB_TOKEN }}
         short_sha=$(printf ${{ github.sha }} | cut -c 1-7)
         docker build receiver --file receiver/Dockerfile --tag $DOCKER_REPO:$short_sha
