@@ -6,6 +6,7 @@ import os
 import requests
 import aiohttp
 import asyncio
+import argparse
 from time import time
 import re
 from datetime import timedelta
@@ -103,6 +104,9 @@ async def send_videos_forever(vid_dir, state_file=None):
                     f.write(f'{shlex.quote(file_path)} {file_size}\n')
 
 if __name__ == "__main__":
-    # asyncio.run(send_videos_forever('.'))
-    # asyncio.run(send_video('poetry.lock'))
-    asyncio.run(send_video('http://localhost:8080/video', '../arlo-sample.mp4'))
+    parser = argparse.ArgumentParser()
+    parser.add_argument('video_dir')
+    parser.add_argument('--state-file')
+    args = parser.parse_args()
+
+    asyncio.run(send_videos_forever(args.video_dir, args.state_file))
