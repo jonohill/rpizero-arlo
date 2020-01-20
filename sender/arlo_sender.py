@@ -17,6 +17,13 @@ logging.basicConfig(level=os.environ.get('LOGLEVEL', 'WARNING').upper())
 
 RE_DURATION = re.compile(r'Duration: (\d+):(\d+):(\d+)\.(\d+)')
 
+async def exec(cmd, args):
+    proc = await asyncio.create_subprocess_exec(cmd, *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        log.error(stderr)
+        raise Exception(f'Error running {cmd}')
+
 class ArloSender:
 
     def __init__(self, video_dir, url, headers={}, state_file=None):
@@ -125,16 +132,30 @@ class ArloSender:
         finally:
             save_state()
 
-    async def send_videos_on_readline(self):
-        '''Check/send videos everytime a line is read from stdin'''
-        sys.stdin.readline()
-        async for _ in self.send_videos_forever():
-            sys.stdin.readline()
-
     async def send_videos_every_seconds(self, seconds=1):
         '''Check/send videos every n seconds'''
         async for _ in self.send_videos_forever():
             await asyncio.sleep(seconds)
+
+    async def send_videos_forever_with_remount(self, mount_device, mount_options, seconds=1):
+        
+        def mount():
+            await exec('mount', ['-o', mount_options, mount_device, self.video_dir])
+        
+        def unmount():
+            try:
+                await exec('umount', [self.video_dir])
+            except:
+                pass
+
+        try:
+            mount()
+            async for _ in self.send_videos_forever():
+                unmount()
+                await asyncio.sleep(seconds)
+                mount()
+        finally:
+            unmount()
 
 async def _main():
     def header(str_val):
@@ -147,14 +168,15 @@ async def _main():
     parser.add_argument('video_dir')
     parser.add_argument('url')
     parser.add_argument('--state-file')
-    parser.add_argument('--on-enter', help='Wait for enter to send each batch of videos. Useful to script before/after actions.', action='store_true', default=False)
     parser.add_argument('--header', '-H', help='Add header value to request. Curl syntax, i.e. "header-name: value"', action='append', type=header)
+    parser.add_argument('--remount', help='(Re-)mount this device before reading each batch')
+    parser.add_argument('--mount-options', help='Mount options, for use with remount device', default='ro')
     args = parser.parse_args()
     headers = { k: v for k, v in args.header } if args.header else {}
 
     sender = ArloSender(args.video_dir, args.url, headers, args.state_file)
-    if args.on_enter:
-        await sender.send_videos_on_readline()
+    if args.remount:
+        await sender.send_videos_forever_with_remount(args.remount, args.mount_options)
     else:
         await sender.send_videos_every_seconds(1)
     
