@@ -139,23 +139,23 @@ class ArloSender:
 
     async def send_videos_forever_with_remount(self, mount_device, mount_options, seconds=1):
         
-        def mount():
+        async def mount():
             await exec('mount', ['-o', mount_options, mount_device, self.video_dir])
         
-        def unmount():
+        async def unmount():
             try:
                 await exec('umount', [self.video_dir])
             except:
                 pass
 
         try:
-            mount()
+            await mount()
             async for _ in self.send_videos_forever():
-                unmount()
+                await unmount()
                 await asyncio.sleep(seconds)
-                mount()
+                await mount()
         finally:
-            unmount()
+            await unmount()
 
 async def _main():
     def header(str_val):
