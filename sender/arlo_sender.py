@@ -86,9 +86,9 @@ class ArloSender:
                             file_size = entry.stat().st_size
                             if state.get(entry.path, 0) != file_size:
                                 start = time()
-                                await self.send_video(entry.path)
                                 state[entry.path] = file_size
                                 state_changed = True
+                                await self.send_video(entry.path)
                                 log.info(f'Video took {time()-start}s')
         if state_changed:
             return state
