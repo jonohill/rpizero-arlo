@@ -154,6 +154,7 @@ class ArloSender:
                 pass
 
         try:
+            await unmount()
             await mount()
             async for _ in self.send_videos_forever():
                 await unmount()
