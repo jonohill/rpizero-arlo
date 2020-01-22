@@ -123,11 +123,11 @@ class ArloSender:
                         state = new_state
                     else:
                         save_state()
-                    yield
                 except Exception as err:
                     log.error('Sending videos failed, backing off...')
                     log.debug(err)
                     await asyncio.sleep(10)
+                yield
 
         finally:
             save_state()
