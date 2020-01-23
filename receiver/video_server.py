@@ -21,6 +21,7 @@ AZURE_KEY = os.environ['AZURE_API_KEY']
 IFTTT_KEY = os.environ['IFTTT_KEY']
 FRAME_URL_BASE = os.environ['ARLO_URL_BASE']
 FRAMES_DIR = os.environ.get('ARLO_FRAMES_DIR', '/tmp/frames') or '/tmp/frames'
+SAVE_DIR = os.environ.get('MZ_SAVE_DIR', None)
 
 routes = web.RouteTableDef()
 
@@ -42,7 +43,7 @@ async def post_video(request: web.Request):
         
     try:
         async with VideoNotifier(azure_endpoint=AZURE_ENDPOINT, azure_key=AZURE_KEY, 
-            ifttt_key=IFTTT_KEY, frame_dir=FRAMES_DIR, frame_url_base=FRAME_URL_BASE) as notifier:
+            ifttt_key=IFTTT_KEY, frame_dir=FRAMES_DIR, frame_url_base=FRAME_URL_BASE, video_dir=SAVE_DIR) as notifier:
             await notifier.check_video(request.content, duration)
     except Exception as err:
         # TODO more specific failure

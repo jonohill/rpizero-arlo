@@ -6,6 +6,7 @@ ENV "AZURE_API_KEY"=
 ENV "IFTTT_KEY"=
 ENV "ARLO_URL_BASE"=
 ENV "ARLO_FRAMES_DIR"=
+ENV "MZ_SAVE_DIR"=
 
 RUN apt-get update && apt-get install -y ffmpeg
 
