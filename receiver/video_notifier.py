@@ -55,12 +55,14 @@ class VideoNotifier:
         notify_all = 'any' in INTERESTING_OBJECTS
 
         file_name = os.path.join(self.video_dir, str(uuid()) + '.ts')
-        async def save_and_yield_video(stream):
-            if self.video_dir: 
+        def save_and_yield_video(stream):
+            async def fork_stream():
                 with open(file_name, 'wb') as f:
                     async for chunk in stream:
                         f.write(chunk)
                         yield chunk
+            if self.video_dir: 
+                return fork_stream()
             else:
                 return stream
 
