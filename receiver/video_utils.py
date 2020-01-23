@@ -71,6 +71,9 @@ async def extract_frames(input_stream: StreamReader, frame_seconds: list) -> Asy
         async for task, result in as_completed_and_iterated(send_stdin(), read_stderr(), frame_generator):
             if task == frame_generator:
                 yield result
+    except Exception as err:
+        log.debug(err)
+        raise
     finally:
         # log.debug(stderr.decode())
         _check_result(proc.returncode, stderr)

@@ -27,13 +27,15 @@ NOTIFICATION_MESSAGE = '{} spotted'
 
 class VideoNotifier:
 
-    def __init__(self, ifttt_key, azure_endpoint, azure_key, frame_dir, frame_url_base, video_dir=None, ifttt_event='push_notification'):
+    def __init__(self, ifttt_key, azure_endpoint, azure_key, frame_dir, frame_url_base, video_dir=None, 
+        ifttt_endpoint='https://maker.ifttt.com/', ifttt_event='push_notification'):
         self.ifttt_key = ifttt_key
         self.azure_endpoint = azure_endpoint
         self.azure_key = azure_key
         self.frame_dir = frame_dir
         self.frame_url_base = frame_url_base
         self.video_dir = video_dir
+        self.ifttt_endpoint = ifttt_endpoint
         self.ifttt_event = ifttt_event
 
     async def __aenter__(self):
@@ -44,7 +46,7 @@ class VideoNotifier:
         await self._session.close()        
 
     async def notify(self, title, message, image_url=''):
-        async with self._session.post(f'https://maker.ifttt.com/trigger/{self.ifttt_event}/with/key/{self.ifttt_key}',
+        async with self._session.post(self.ifttt_endpoint + f'trigger/{self.ifttt_event}/with/key/{self.ifttt_key}',
             json={'value1': title, 'value2': message, 'value3': image_url}) as resp:
             log.debug(f'ifttt response: {await resp.text()}')
 
@@ -57,16 +59,20 @@ class VideoNotifier:
         file_name = os.path.join(self.video_dir, str(uuid()) + '.ts')
         def save_and_yield_video(stream):
             async def fork_stream():
+                log.debug('fork_stream')
                 with open(file_name, 'wb') as f:
                     async for chunk in stream:
                         f.write(chunk)
                         yield chunk
             if self.video_dir: 
+                log.debug('create fork_stream')
                 return fork_stream()
             else:
                 return stream
 
         try:
+
+
             async with VideoRecogniser(self.azure_endpoint, self.azure_key, self._session) as recogniser:
                 async for vid_results in recogniser.check_video(save_and_yield_video(video_stream), duration):
                     objects = vid_results['objects']
@@ -92,6 +98,10 @@ class VideoNotifier:
                             image_url = self.frame_url_base + out_file
                             log.debug(f'Image URL is {image_url}')
                             await self.notify(NOTIFICATION_MESSAGE.format(object_names), '📸', image_url)
+        except Exception as err:
+            log.debug('exception')
+            log.debug(err)
+            raise
         finally:
             if self.video_dir and (not notified):
                 try:

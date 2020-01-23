@@ -18,6 +18,7 @@ except:
     print(f'The POST key is {POST_KEY}')
 AZURE_ENDPOINT = os.environ['AZURE_ENDPOINT']
 AZURE_KEY = os.environ['AZURE_API_KEY']
+IFTTT_ENDPOINT = os.environ.get('IFTTT_ENDPOINT', None)
 IFTTT_KEY = os.environ['IFTTT_KEY']
 FRAME_URL_BASE = os.environ['ARLO_URL_BASE']
 FRAMES_DIR = os.environ.get('ARLO_FRAMES_DIR', '/tmp/frames') or '/tmp/frames'
@@ -42,8 +43,11 @@ async def post_video(request: web.Request):
         return web.json_response({'error': 'positive_duration_required'}, status=400)
         
     try:
-        async with VideoNotifier(azure_endpoint=AZURE_ENDPOINT, azure_key=AZURE_KEY, 
-            ifttt_key=IFTTT_KEY, frame_dir=FRAMES_DIR, frame_url_base=FRAME_URL_BASE, video_dir=SAVE_DIR) as notifier:
+        kwargs = { 'azure_endpoint': AZURE_ENDPOINT, 'azure_key': AZURE_KEY, 'ifttt_key': IFTTT_KEY, 
+                   'frame_dir': FRAMES_DIR, 'frame_url_base': FRAME_URL_BASE, 'video_dir': SAVE_DIR }
+        if IFTTT_ENDPOINT:
+            kwargs['ifttt_endpoint'] = IFTTT_ENDPOINT
+        async with VideoNotifier(**kwargs) as notifier:
             await notifier.check_video(request.content, duration)
     except Exception as err:
         # TODO more specific failure
@@ -71,6 +75,17 @@ async def post_mock_azure(request: web.Request):
                 }
             }]
         })
+    except Exception as err:
+        log.debug(f'Mock - exception {err}')
+        raise err
+
+@routes.post('/trigger/{event}/with/key/{key}')
+async def post_mock_ifttt(request: web.Request):
+    try:
+        log.debug('Mock ifttt start')
+        content = await request.read()
+        log.debug(f'Mock ifttt - received "{content}"')
+        return web.Response(text=f'Congratulations! You\'ve fired the {request.match_info["event"]} event')
     except Exception as err:
         log.debug(f'Mock - exception {err}')
         raise err

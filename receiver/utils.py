@@ -56,3 +56,19 @@ async def as_completed_and_iterated(*awaitables_and_iterables):
                 add_task(aw_or_it)
             else:
                 receiving = False
+
+class StreamReaderSaver():
+    '''Wrapper for a StreamReader with the same interface.
+       Permits saving the data from the stream as it is read.'''
+    
+    def __init__(self, original_streamreader: asyncio.StreamReader, target_file):
+        self._sr = original_streamreader
+        self._f = target_file
+
+    async def read(self, n=-1):
+        data = await self._sr.read(n)
+        if data:
+            self._f.write(data)
+        return data
+
+    
