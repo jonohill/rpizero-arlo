@@ -71,4 +71,17 @@ class StreamReaderSaver():
             self._f.write(data)
         return data
 
-    
+    async def readline(self):
+        return await self._sr.readline()
+
+    async def readexactly(self, n):
+        return await self._sr.readexactly(n)  
+
+    async def readuntil(self, separator=None):
+        if separator:
+            return await self._sr.readuntil(separator)
+        else:
+            return await self._sr.readuntil()
+
+    def at_eof(self):
+        return self._sr.at_eof()
