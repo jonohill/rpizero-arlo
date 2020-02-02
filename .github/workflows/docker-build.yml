@@ -12,6 +12,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+      with:
+        lfs: true
     - name: build
       env:
         DOCKER_REPO: docker.pkg.github.com/${{ github.repository }}/motionzero-receiver
