@@ -2,7 +2,6 @@ import numpy
 import argparse
 import time
 import cv2
-import cv_utils
 import os
 import asyncio
 import threading
@@ -11,6 +10,8 @@ from shutil import rmtree
 import sys
 import logging
 from uuid import uuid4 as uuid
+import video_utils
+import traceback
 
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -39,11 +40,12 @@ class YoloRecogniser:
         loop = asyncio.get_running_loop()
         results = []
 
-        def recognise_frame(frame):
+        def recognise_frame(image_bytes):
             boxes = []
             confidences = []
             class_ids = []
 
+            frame = cv2.imdecode(numpy.fromstring(image_bytes, dtype=numpy.uint8), cv2.IMREAD_UNCHANGED)
             frame_h, frame_w = frame.shape[:2]
             blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416), swapRB=True, crop=False)
             with self._net_lock:
@@ -72,7 +74,7 @@ class YoloRecogniser:
                 for i in idxs.flatten():
                     x, y, w, h = boxes[i]
                     red = (0, 0, 255)
-                    cv2.rectangle(frame, (x, y), (x + w, y + h), red, 2)
+                    cv2.rectangle(frame, (x, y), (x + w, y + h), red, 3)
                     objects |= { self._labels[class_ids[i]] }
                 if self._frame_save_dir:
                     frame_file =  str(uuid()) + '.jpg'
@@ -86,7 +88,9 @@ class YoloRecogniser:
             else:
                 return None
 
-        async for frame in cv_utils.get_realtime_frames(video_bytes_generator):
+        # This uses ffmpeg for frame extraction because opencv doesn't allow for reading from a pipe.
+        # (A named pipe works but OpenCV errors when if it runs out of data.)
+        async for frame in video_utils.extract_frames(video_bytes_generator):
             results = await loop.run_in_executor(None, recognise_frame, frame)
             if results:
                 yield results

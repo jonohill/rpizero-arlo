@@ -7,6 +7,7 @@ import aiohttp
 from time import time
 from uuid import uuid4 as uuid
 import utils
+import traceback
 
 log = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ class VideoNotifier:
                         image_url = self.frame_url_base + vid_results['frame']
                         log.debug(f'Image URL is {image_url}')
                         await self.notify(NOTIFICATION_MESSAGE.format(object_names), '📸', image_url)
-                        return True      
+            return notified
 
         try:
             if self.video_dir:
@@ -108,6 +109,9 @@ class VideoNotifier:
                         os.remove(file_name)
                     except:
                         pass
+        except:
+            log.debug(traceback.format_exc())
+            raise
         finally:
             log.info(f'Time to check all videos and notify: {time()-start}')
                     
