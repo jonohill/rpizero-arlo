@@ -34,7 +34,7 @@ class ArloSender:
         self.send_semaphore = asyncio.Semaphore(max_concurrent)
 
     async def send_video(self, vid_path):
-        with self.send_semaphore:
+        async with self.send_semaphore:
             start = time()
             ff_proc = await asyncio.create_subprocess_exec('ffmpeg', '-i', vid_path, '-acodec', 'copy', '-vcodec', 'copy', '-f', 'mpegts', '-', 
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
