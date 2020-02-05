@@ -10,18 +10,32 @@ from pprint import pformat
 log = logging.getLogger(__name__)
 logging.basicConfig(level=os.environ.get('LOGLEVEL', 'WARNING').upper())
 
-# TODO what do we call this thing
-try:
-    POST_KEY = os.environ['ARLO_HTTP_KEY'] or str(uuid())
-except:
-    POST_KEY = str(uuid())
+# All environment variables begin with MZ_
+def get_env(name, default=None, val_type=str):
+    if type(default) != str and val_type == str:
+        val_type = type(default)
+    env_name = 'MZ_' + name
+    val = os.environ.get(env_name, default) or default
+    if val is None:
+        raise KeyError(f'Environment variable "{env_name}" is required')
+    if type(val) == str:
+        if val_type == list or val_type == set:
+            val = [ v.strip() for v in val.strip().split(',') ]
+        if val_type == set:
+            val = set(val)
+    return val
+
+POST_KEY = get_env('POST_KEY', str(uuid()))
+if POST_KEY:
     print(f'The POST key is {POST_KEY}')
-IFTTT_ENDPOINT = os.environ.get('IFTTT_ENDPOINT', None)
-IFTTT_KEY = os.environ['IFTTT_KEY']
-FRAME_URL_BASE = os.environ['ARLO_URL_BASE']
-FRAMES_DIR = os.environ.get('ARLO_FRAMES_DIR', '/tmp/frames') or '/tmp/frames'
-SAVE_DIR = os.environ.get('MZ_SAVE_DIR', None)
-YOLO_CONF_DIR = os.environ.get('MZ_YOLO_CONF_DIR', 'yolo')
+IFTTT_ENDPOINT = get_env('IFTTT_ENDPOINT', '')
+IFTTT_KEY = get_env('IFTTT_KEY')
+FRAME_URL_BASE = get_env('URL_BASE')
+FRAMES_DIR = get_env('FRAMES_DIR', '/tmp/frames')
+SAVE_DIR = get_env('SAVE_DIR', '')
+YOLO_CONF_DIR = get_env('YOLO_CONF_DIR', 'yolo')
+OBJECT_WHITELIST = get_env('OBJECT_WHITELIST', set())
+OBJECT_BLACKLIST = get_env('OBJECT_BLACKLIST', set())
 
 routes = web.RouteTableDef()
 
@@ -35,7 +49,7 @@ async def post_video(request: web.Request):
         
     try:
         kwargs = { 'ifttt_key': IFTTT_KEY, 'frame_dir': FRAMES_DIR, 'frame_url_base': FRAME_URL_BASE, 
-                   'video_dir': SAVE_DIR, 'yolo_conf_dir': YOLO_CONF_DIR }
+                   'video_dir': SAVE_DIR, 'yolo_conf_dir': YOLO_CONF_DIR, 'blacklist': OBJECT_BLACKLIST, 'whitelist': OBJECT_WHITELIST }
         if IFTTT_ENDPOINT:
             kwargs['ifttt_endpoint'] = IFTTT_ENDPOINT
         async with VideoNotifier(**kwargs) as notifier:

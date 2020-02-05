@@ -11,30 +11,20 @@ import traceback
 
 log = logging.getLogger(__name__)
 
-INTERESTING_OBJECTS = { 'any' }
-#     'person',
-#     'man',
-#     'woman',
-#     'animal',
-#     'cat',
-#     'dog',
-#     'bird',
-#     'vehicle',
-#     'car',
-#     'truck'
-# }
 NOTIFICATION_TITLE = 'Camera Alert'
 NOTIFICATION_MESSAGE = '{} spotted'
 
 class VideoNotifier:
 
     def __init__(self, ifttt_key, yolo_conf_dir, frame_dir, frame_url_base, video_dir=None, 
-        ifttt_endpoint='https://maker.ifttt.com/', ifttt_event='push_notification'):
+        ifttt_endpoint='https://maker.ifttt.com/', ifttt_event='push_notification', whitelist=set(), blacklist=set()):
         self.ifttt_key = ifttt_key
         self.frame_url_base = frame_url_base
         self.video_dir = video_dir
         self.ifttt_endpoint = ifttt_endpoint
         self.ifttt_event = ifttt_event
+        self.whitelist = whitelist
+        self.blacklist = blacklist
         self.recogniser = YoloRecogniser(frame_dir)
         self.recogniser.load(yolo_conf_dir)
 
@@ -58,13 +48,14 @@ class VideoNotifier:
         async def recognise(stream):
             notified = False
             notified_objects = set()
-            notify_all = 'any' in INTERESTING_OBJECTS
             async for vid_results in self.recogniser.recognise_video_stream(stream):
                 objects = vid_results['objects']
                 if objects:
                     actionable = objects - notified_objects
-                    if not notify_all:
-                        actionable &= INTERESTING_OBJECTS
+                    if self.whitelist:
+                        actionable &= self.whitelist
+                    if self.blacklist:
+                        actionable -= self.blacklist
                     if actionable:
                         notified_objects |= actionable
                         object_names = ', '.join(actionable).capitalize()
