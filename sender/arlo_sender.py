@@ -26,54 +26,57 @@ async def exec(cmd, args):
 
 class ArloSender:
 
-    def __init__(self, video_dir, url, headers={}, state_file=None):
+    def __init__(self, video_dir, url, headers={}, state_file=None, max_concurrent=2):
         self.video_dir = video_dir
         self.url = url
         self.headers = headers
         self.state_file = state_file
+        self.send_semaphore = asyncio.Semaphore(max_concurrent)
 
     async def send_video(self, vid_path):
-        start = time()
-        ff_proc = await asyncio.create_subprocess_exec('ffmpeg', '-i', vid_path, '-acodec', 'copy', '-vcodec', 'copy', '-f', 'mpegts', '-', 
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        with self.send_semaphore:
+            start = time()
+            ff_proc = await asyncio.create_subprocess_exec('ffmpeg', '-i', vid_path, '-acodec', 'copy', '-vcodec', 'copy', '-f', 'mpegts', '-', 
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
-        # Read stderr until the duration is printed. This also means we can know if it's a valid video or not.
-        duration = None
-        err_lines = []
-        while (ff_proc.returncode is None) and (duration is None) and (not ff_proc.stderr.at_eof()):
-            err_line = (await ff_proc.stderr.readline()).decode()
-            err_lines.append(err_line)
-            re_result = RE_DURATION.search(err_line)
-            if re_result:
-                h, m, s, ms = re_result.groups()
-                duration = int(timedelta(hours=int(h), minutes=int(m), seconds=int(s), milliseconds=int(ms)) / timedelta(milliseconds=1))
-                log.debug(f'Video duration is {duration}ms')
+            # Read stderr until the duration is printed. This also means we can know if it's a valid video or not.
+            duration = None
+            err_lines = []
+            while (ff_proc.returncode is None) and (duration is None) and (not ff_proc.stderr.at_eof()):
+                err_line = (await ff_proc.stderr.readline()).decode()
+                err_lines.append(err_line)
+                re_result = RE_DURATION.search(err_line)
+                if re_result:
+                    h, m, s, ms = re_result.groups()
+                    duration = int(timedelta(hours=int(h), minutes=int(m), seconds=int(s), milliseconds=int(ms)) / timedelta(milliseconds=1))
+                    log.debug(f'Video duration is {duration}ms')
 
-        if not duration:
-            log.info(f'{vid_path} is not a video')
-            log.debug(''.join(err_lines) + '\n' + (await ff_proc.stderr.read()).decode())
-            await ff_proc.stdout.read() # clear buffer
-        else:
-            log.debug(f'Duration took {time()-start}')
-            async with aiohttp.ClientSession() as http:
-                http_response = None
-                async def post_video():
-                    post_start = time()
-                    nonlocal http_response
-                    http_response = await http.post(self.url, data=ff_proc.stdout, params={'duration': duration}, headers=self.headers)
-                    log.debug(f'Video POST took {time()-post_start}s')
+            if not duration:
+                log.info(f'{vid_path} is not a video')
+                log.debug(''.join(err_lines) + '\n' + (await ff_proc.stderr.read()).decode())
+                await ff_proc.stdout.read() # clear buffer
+            else:
+                log.debug(f'Duration took {time()-start}')
+                async with aiohttp.ClientSession() as http:
+                    http_response = None
+                    async def post_video():
+                        post_start = time()
+                        nonlocal http_response
+                        http_response = await http.post(self.url, data=ff_proc.stdout, params={'duration': duration}, headers=self.headers)
+                        log.debug(f'Video POST took {time()-post_start}s')
 
-                for f in asyncio.as_completed([post_video(), ff_proc.wait(), ff_proc.stderr.read()]):
-                    await f
-                log.debug(f'HTTP response code: {http_response.status}')
-                http_response.raise_for_status()
-        log.debug(f'Video took {time()-start}s')
+                    for f in asyncio.as_completed([post_video(), ff_proc.wait(), ff_proc.stderr.read()]):
+                        await f
+                    log.debug(f'HTTP response code: {http_response.status}')
+                    http_response.raise_for_status()
+            log.debug(f'Video took {time()-start}s')
         
     async def send_new_videos(self, state={}):
         '''Send any videos not in state, returning new state only if modified'''
         state_changed = False
         # Enumerate all video files
         dirs_to_scan = [self.video_dir]
+        pending_tasks = []
         while dirs_to_scan:
             these_dirs = dirs_to_scan.copy()
             dirs_to_scan = []
@@ -85,16 +88,18 @@ class ArloSender:
                         elif entry.is_file():
                             file_size = entry.stat().st_size
                             if state.get(entry.path, 0) != file_size:
-                                start = time()
-                                try:
-                                    await self.send_video(entry.path)
-                                except aiohttp.ClientResponseError as err:
-                                    log.warning(f'Server returned {err.status}')
-                                    if err.status >= 500:
-                                        raise
+                                pending_tasks.append(self.send_video(entry.path))
                                 state[entry.path] = file_size
                                 state_changed = True
-                                log.info(f'Video took {time()-start}s')
+
+        try:
+            for t in asyncio.as_completed(pending_tasks):
+                await t
+        except aiohttp.ClientResponseError as err:
+            log.warning(f'Server returned {err.status}')
+            if err.status >= 500:
+                raise
+
         if state_changed:
             return state
 
