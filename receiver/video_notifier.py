@@ -79,7 +79,7 @@ class VideoNotifier:
 
         try:
             if self.video_dir:
-                file_name = str(uuid()) + '.ts'
+                file_name = str(uuid()) + '.m2ts'
                 file_path = os.path.join(self.video_dir, file_name)
                 temp_file = os.path.join(self._temp_dir, file_name)
 
