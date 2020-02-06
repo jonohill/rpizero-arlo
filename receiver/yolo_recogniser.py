@@ -81,6 +81,7 @@ class YoloRecogniser:
                     cv2.imwrite(os.path.join(self._frame_save_dir, frame_file), frame)
 
             if objects:
+                log.debug(f'Detected: {objects}')
                 if self._frame_save_dir:
                     return { 'frame': frame_file, 'objects': objects }
                 else:
