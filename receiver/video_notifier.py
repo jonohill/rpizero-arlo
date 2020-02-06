@@ -8,6 +8,8 @@ from time import time
 from uuid import uuid4 as uuid
 import utils
 import traceback
+import tempfile
+import shutil
 
 log = logging.getLogger(__name__)
 
@@ -30,9 +32,11 @@ class VideoNotifier:
 
     async def __aenter__(self):
         self._session = aiohttp.ClientSession(raise_for_status=True)
+        self._temp_dir = tempfile.mkdtemp()
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
+        shutil.rmtree(self._temp_dir, ignore_errors=True)
         await self._session.close()        
 
     async def notify(self, title, message, image_url=''):
@@ -75,7 +79,9 @@ class VideoNotifier:
 
         try:
             if self.video_dir:
-                file_name = os.path.join(self.video_dir, str(uuid()) + '.ts')
+                file_name = str(uuid()) + '.ts'
+                file_path = os.path.join(self.video_dir, file_name)
+                temp_file = os.path.join(self._temp_dir, file_name)
 
             async def yield_stream(stream: asyncio.StreamReader):
                 while True:
@@ -85,7 +91,7 @@ class VideoNotifier:
                     yield chunk
 
             async def save_and_yield_stream(stream: asyncio.StreamReader):
-                with open(file_name, 'wb') as f:
+                with open(temp_file, 'wb') as f:
                     async for chunk in yield_stream(stream):
                         f.write(chunk)
                         yield chunk
@@ -95,11 +101,13 @@ class VideoNotifier:
             try:
                 notified = await recognise(vid_gen)
             finally:
-                if not notified:
-                    try:
-                        os.remove(file_name)
-                    except:
-                        pass
+                try:
+                    if notified:
+                        os.rename(temp_file, file_path)
+                    else:
+                        os.remove(temp_file)
+                except:
+                    pass
         except:
             log.debug(traceback.format_exc())
             raise
