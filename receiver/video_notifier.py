@@ -102,12 +102,15 @@ class VideoNotifier:
                 notified = await recognise(vid_gen)
             finally:
                 try:
-                    if notified:
-                        os.rename(temp_file, file_path)
-                    else:
-                        os.remove(temp_file)
-                except:
-                    pass
+                    if self.video_dir:
+                        if notified:
+                            log.debug(f'Move {temp_file} to {file_path}')
+                            os.rename(temp_file, file_path)
+                        else:
+                            os.remove(temp_file)
+                except Exception:
+                    log.debug('Failed to move video')
+                    log.debug(traceback.format_exc())
         except:
             log.debug(traceback.format_exc())
             raise

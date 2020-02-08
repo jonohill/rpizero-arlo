@@ -7,6 +7,8 @@ ENV "IFTTT_KEY"=
 ENV "ARLO_URL_BASE"=
 ENV "ARLO_FRAMES_DIR"=
 ENV "MZ_SAVE_DIR"=
+ENV "MZ_OBJECT_WHITELIST"=
+ENV "MZ_OBJECT_BLACKLIST"=
 
 RUN apt-get update && apt-get install -y ffmpeg
 
