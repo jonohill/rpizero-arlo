@@ -19,7 +19,7 @@ jobs:
         docker login docker.pkg.github.com --username jonohill --password ${{ secrets.GITHUB_TOKEN }}
         docker pull $DOCKER_REPO:latest-ci || true
         # Avoid doing an lfs pull unless absolutely required - lfs bandwidth is not free within actions
-        if ! docker run --rm --entrypoint cat $DOCKER_REPO:latest-ci /usr/src/app/yolo/yolov3.weights > yolo/yolov3.weights; then
+        if ! docker run --rm --entrypoint cat $DOCKER_REPO:latest-ci /usr/src/app/yolo/yolov3.weights > receiver/yolo/yolov3.weights; then
           git lfs pull
         fi
         short_sha=$(printf ${{ github.sha }} | cut -c 1-7)
