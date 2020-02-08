@@ -17,18 +17,18 @@ jobs:
         DOCKER_REPO: docker.pkg.github.com/${{ github.repository }}/motionzero-receiver
       run: |
         docker login docker.pkg.github.com --username jonohill --password ${{ secrets.GITHUB_TOKEN }}
-        docker pull $DOCKER_REPO:latest-ci || true
+        docker pull ${DOCKER_REPO}:latest-ci || true
         # Avoid doing an lfs pull unless absolutely required - lfs bandwidth is not free within actions
-        if ! docker run --rm --entrypoint cat $DOCKER_REPO:latest-ci /usr/src/app/yolo/yolov3.weights > receiver/yolo/yolov3.weights; then
+        if ! docker run --rm --entrypoint cat ${DOCKER_REPO}:latest-ci /usr/src/app/yolo/yolov3.weights > receiver/yolo/yolov3.weights; then
           git lfs pull
         fi
         short_sha=$(printf ${{ github.sha }} | cut -c 1-7)
-        docker build receiver --cache-from $DOCKER_REPO:latest-ci --file receiver/Dockerfile --tag ci
-        docker tag ci $DOCKER_REPO:$short_sha
-        docker tag ci $DOCKER_REPO:latest-ci
-        docker push $DOCKER_REPO
+        docker build receiver --cache-from ${DOCKER_REPO}:latest-ci --file receiver/Dockerfile --tag ci
+        docker tag ci ${DOCKER_REPO}:$short_sha
+        docker tag ci ${DOCKER_REPO}:latest-ci
+        docker push ${DOCKER_REPO}
     - name: release
       if: github.ref == 'master'
       run: | # TODO version tag
-        docker tag ci $DOCKER_REPO:latest
+        docker tag ci ${DOCKER_REPO}:latest
         docker push
