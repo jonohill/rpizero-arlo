@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 logging.basicConfig(level=os.environ.get('LOGLEVEL', 'WARNING').upper())
 
 RE_DURATION = re.compile(r'Duration: (\d+):(\d+):(\d+)\.(\d+)')
+RETRY_COUNT = 5
 
 async def exec(cmd, args):
     proc = await asyncio.create_subprocess_exec(cmd, *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
@@ -23,6 +24,12 @@ async def exec(cmd, args):
     if proc.returncode != 0:
         log.error(stderr)
         raise Exception(f'Error running {cmd}')
+
+class NotAVideoError(Exception):
+
+    def __init__(self, video_path):
+        super().__init__('Not a video')
+        self.video_path = video_path
 
 class ArloSender:
 
@@ -55,6 +62,7 @@ class ArloSender:
                 log.info(f'{vid_path} is not a video')
                 log.debug(''.join(err_lines) + '\n' + (await ff_proc.stderr.read()).decode())
                 await ff_proc.stdout.read() # clear buffer
+                raise NotAVideoError(vid_path)
             else:
                 log.debug(f'Duration took {time()-start}')
                 async with aiohttp.ClientSession() as http:
@@ -70,6 +78,7 @@ class ArloSender:
                     log.debug(f'HTTP response code: {http_response.status}')
                     http_response.raise_for_status()
             log.debug(f'Video took {time()-start}s')
+            return vid_path
         
     async def send_new_videos(self, state={}):
         '''Send any videos not in state, returning new state only if modified'''
@@ -86,19 +95,28 @@ class ArloSender:
                         if entry.is_dir():
                             dirs_to_scan.append(entry.path)
                         elif entry.is_file():
-                            file_size = entry.stat().st_size
-                            if state.get(entry.path, 0) != file_size:
-                                pending_tasks.append(self.send_video(entry.path))
-                                state[entry.path] = file_size
+                            retry_count = state.get(entry.path, 1)
+                            if retry_count < RETRY_COUNT and retry_count != 0:
+                                log.debug(f'Attempt {retry_count} for {entry.path}')
+                                pending_tasks.append(asyncio.create_task(self.send_video(entry.path)))
+                                state[entry.path] = retry_count
                                 state_changed = True
 
-        try:
             for t in asyncio.as_completed(pending_tasks):
-                await t
-        except aiohttp.ClientResponseError as err:
-            log.warning(f'Server returned {err.status}')
-            if err.status >= 500:
-                raise
+                try:
+                    vid_path = await t
+                    state[vid_path] = 0
+                    state_changed = True
+                except NotAVideoError as err:
+                    retry_count = state.get(err.video_path, 1) + 1
+                    state[vid_path] = retry_count
+                    if retry_count >= RETRY_COUNT:
+                        log.debug(f'Max retry count exceeded for {entry.path}')                    
+                    state_changed = True
+                except aiohttp.ClientResponseError as err:
+                    log.warning(f'Server returned {err.status}')
+                    if err.status >= 500:
+                        raise
 
         if state_changed:
             return state
