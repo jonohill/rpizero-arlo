@@ -105,7 +105,7 @@ class VideoNotifier:
                     if self.video_dir:
                         if notified:
                             log.debug(f'Move {temp_file} to {file_path}')
-                            os.rename(temp_file, file_path)
+                            shutil.move(temp_file, file_path)
                         else:
                             os.remove(temp_file)
                 except Exception:
