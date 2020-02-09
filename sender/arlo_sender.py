@@ -17,6 +17,9 @@ logging.basicConfig(level=os.environ.get('LOGLEVEL', 'WARNING').upper())
 
 RE_DURATION = re.compile(r'Duration: (\d+):(\d+):(\d+)\.(\d+)')
 RETRY_COUNT = 5
+IGNORED_EXTENSIONS = {
+    '.meta' # arlo metadata file
+}
 
 async def exec(cmd, args):
     proc = await asyncio.create_subprocess_exec(cmd, *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
@@ -96,7 +99,8 @@ class ArloSender:
                             dirs_to_scan.append(entry.path)
                         elif entry.is_file():
                             retry_count = state.get(entry.path, 1)
-                            if retry_count < RETRY_COUNT and retry_count != 0:
+                            _, file_ext = os.path.splitext(entry.path)
+                            if file_ext not in IGNORED_EXTENSIONS and retry_count < RETRY_COUNT and retry_count != 0:
                                 log.debug(f'Attempt {retry_count} for {entry.path}')
                                 pending_tasks.append(asyncio.create_task(self.send_video(entry.path)))
                                 state[entry.path] = retry_count
