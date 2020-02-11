@@ -112,7 +112,8 @@ class ArloSender:
                     state[vid_path] = 0
                     state_changed = True
                 except NotAVideoError as err:
-                    retry_count = state.get(err.video_path, 1) + 1
+                    vid_path = err.video_path
+                    retry_count = state.get(vid_path, 1) + 1
                     state[vid_path] = retry_count
                     if retry_count >= RETRY_COUNT:
                         log.debug(f'Max retry count exceeded for {entry.path}')                    
