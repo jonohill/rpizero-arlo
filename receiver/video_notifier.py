@@ -18,7 +18,7 @@ NOTIFICATION_MESSAGE = '{} spotted'
 
 class VideoNotifier:
 
-    def __init__(self, ifttt_key, yolo_conf_dir, frame_dir, frame_url_base, video_dir=None, 
+    def __init__(self, ifttt_key, yolo_conf_dir, frame_dir, frame_url_base, text_pre_notify=False, video_dir=None, 
         ifttt_endpoint='https://maker.ifttt.com/', ifttt_event='push_notification', whitelist=set(), blacklist=set()):
         self.ifttt_key = ifttt_key
         self.frame_url_base = frame_url_base

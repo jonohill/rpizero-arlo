@@ -22,6 +22,7 @@ class MzConfig:
         self.yolo_conf_dir = self.get_env('YOLO_CONF_DIR', 'yolo')
         self.object_whitelist = self.get_env('OBJECT_WHITELIST', set())
         self.object_blacklist = self.get_env('OBJECT_BLACKLIST', set())
+        self.text_pre_notify = self.get_env('TEXT_PRE_NOTIFY', False)
 
     # All environment variables begin with MZ_
     def get_env(self, name, default=None, val_type=str):
@@ -54,7 +55,7 @@ async def post_video(request: web.Request):
         return web.Response(status=403)
         
     try:
-        kwargs = { 'ifttt_key': config.ifttt_key, 'frame_dir': config.frames_dir, 'frame_url_base': config.frame_url_base, 
+        kwargs = { 'ifttt_key': config.ifttt_key, 'frame_dir': config.frames_dir, 'frame_url_base': config.frame_url_base, 'text_pre_notify': config.text_pre_notify,
                    'video_dir': config.save_dir, 'yolo_conf_dir': config.yolo_conf_dir, 'blacklist': config.object_blacklist, 'whitelist': config.object_whitelist }
         if config.ifttt_endpoint:
             kwargs['ifttt_endpoint'] = config.ifttt_endpoint
