@@ -11,6 +11,8 @@ start_sectors=$(echo "$fdisk_output" | grep -A1 '^Start' | tail -n1 | awk '{$1=$
 sector_size=$(echo "$fdisk_output" | grep '^Units' | awk '{print $(NF-1)}')
 start_bytes=$(( $start_sectors * $sector_size ))
 
+mkdir -p "$MZ_PATH"
+
 ./arlo_sender.py \
     --state-file "$MZ_STATE" \
     --remount "$MZ_DEV" \
