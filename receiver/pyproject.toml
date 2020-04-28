@@ -8,7 +8,7 @@ authors = ["Jono Hill <jonathan@hillnz.com>"]
 python = "^3.7"
 aiohttp = "^3.6"
 aiodns = "^2.0"
-python-ffmpeg = "^1.0.8"
+python-ffmpeg = "^1.0.11"
 opencv-contrib-python-headless = "^4.1.2"
 aiofile = "^1.5.2"
 

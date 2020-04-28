@@ -217,7 +217,7 @@ description = "A port of node.js's EventEmitter to python."
 name = "pyee"
 optional = false
 python-versions = "*"
-version = "6.0.0"
+version = "7.0.1"
 
 [[package]]
 category = "dev"
@@ -239,7 +239,7 @@ description = "A python interface for FFmpeg"
 name = "python-ffmpeg"
 optional = false
 python-versions = "*"
-version = "1.0.8"
+version = "1.0.11"
 
 [package.dependencies]
 pyee = "*"
@@ -290,7 +290,7 @@ idna = ">=2.0"
 multidict = ">=4.0"
 
 [metadata]
-content-hash = "2421e27a4fdaa24b47699fc9f1cd835c7c2928a5cd613c392927fab3c6877c8a"
+content-hash = "54a7c64a3baea242fd1981c74e38a9c31cfa1e1bc31b46ce390e0a3461ecd466"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -524,16 +524,16 @@ pycparser = [
     {file = "pycparser-2.19.tar.gz", hash = "sha256:a988718abfad80b6b157acce7bf130a30876d27603738ac39f140993246b25b3"},
 ]
 pyee = [
-    {file = "pyee-6.0.0-py2.py3-none-any.whl", hash = "sha256:dbe44f61c40a995d2bdfd83d9fcb87ae025882d2c7f366513325e3daa09d7ede"},
-    {file = "pyee-6.0.0.tar.gz", hash = "sha256:a9c9b60e8693a260dd942ef5a71358cfcbba15792d5e72caf0e3c891c4e91c3b"},
+    {file = "pyee-7.0.1-py2.py3-none-any.whl", hash = "sha256:705806bb09bc4b17a729d9a3d19a4f4e765abd010eb18e032d72f76452d07552"},
+    {file = "pyee-7.0.1.tar.gz", hash = "sha256:b0e5b89b17c8bd52a3c6517a545187907a8c69ce90169d29ebd8d2d5d7e4bc7d"},
 ]
 pylint = [
     {file = "pylint-2.4.4-py3-none-any.whl", hash = "sha256:886e6afc935ea2590b462664b161ca9a5e40168ea99e5300935f6591ad467df4"},
     {file = "pylint-2.4.4.tar.gz", hash = "sha256:3db5468ad013380e987410a8d6956226963aed94ecb5f9d3a28acca6d9ac36cd"},
 ]
 python-ffmpeg = [
-    {file = "python-ffmpeg-1.0.8.tar.gz", hash = "sha256:10291b7dd9c3462a7e578b6069a304e6dc075c3d31cd3d0dcae19b369b718650"},
-    {file = "python_ffmpeg-1.0.8-py3-none-any.whl", hash = "sha256:f6db96ab7030c698586ead761a07b758b15f4da0276bed9a96bcba915a26d336"},
+    {file = "python-ffmpeg-1.0.11.tar.gz", hash = "sha256:bdf38ba5052f7128241a217a4411664e1047afa959416b30f133a3a349428e4c"},
+    {file = "python_ffmpeg-1.0.11-py3-none-any.whl", hash = "sha256:4eb946e7457ff5db9ce1cbe138ecdbe53e7bfe4a15a78b39051fba6b64919f36"},
 ]
 rope = [
     {file = "rope-0.14.0-py2-none-any.whl", hash = "sha256:6b728fdc3e98a83446c27a91fc5d56808a004f8beab7a31ab1d7224cecc7d969"},
