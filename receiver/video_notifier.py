@@ -22,6 +22,7 @@ class VideoNotifier:
         ifttt_endpoint='https://maker.ifttt.com/', ifttt_event='push_notification', whitelist=set(), blacklist=set()):
         self.ifttt_key = ifttt_key
         self.frame_url_base = frame_url_base
+        self.text_pre_notify = text_pre_notify
         self.video_dir = video_dir
         self.ifttt_endpoint = ifttt_endpoint
         self.ifttt_event = ifttt_event
@@ -65,7 +66,8 @@ class VideoNotifier:
                         object_names = ', '.join(actionable).capitalize()
                         
                         # Text only notification
-                        await self.notify(NOTIFICATION_MESSAGE.format(object_names), 'Photo incoming...')
+                        if self.text_pre_notify:
+                            await self.notify(NOTIFICATION_MESSAGE.format(object_names), 'Photo incoming...')
                         if not notified:
                             log.info(f'Time to first notify: {time()-start}')
                             notified = True
